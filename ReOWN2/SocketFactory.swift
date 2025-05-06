@@ -24,14 +24,86 @@ final class SocketViewModel: ObservableObject {
     
     var accountsDetails = [AccountDetails]()
     @Published private var session: Session?
-
+    @Published private var result: WalletConnectURI?
     
     init() {
         connect()
         AppkitConfigure()
         getSession()
     }
+    
+    private func isHttpUrl(url: String) -> Bool {
+        return url.hasPrefix("http://") || url.hasPrefix("https://")
+    }
+        
+    private func formatNativeUrlString(_ string: String?) throws -> String? {
+        guard let string = string, !string.isEmpty else { return nil }
+            
+        if isHttpUrl(url: string) {
+            return try formatUniversalUrlString(string)
+        }
+            
+        var safeAppUrl = string
+        if !safeAppUrl.contains("://") {
+            safeAppUrl = safeAppUrl.replacingOccurrences(of: "/", with: "").replacingOccurrences(of: ":", with: "")
+            safeAppUrl = "\(safeAppUrl)://"
+        }
+        
+        guard let deeplinkUri = result?.deeplinkUri else {
+            print("ERRRPORT: No deeplinkUri")
+            return nil
+        }
+            
+        return "\(safeAppUrl)wc?uri=\(deeplinkUri)"
+    }
+        
+    private func formatUniversalUrlString(_ string: String?) throws -> String? {
+        guard let string = string, !string.isEmpty else { return nil }
+            
+        if !isHttpUrl(url: string) {
+            return try formatNativeUrlString(string)
+        }
+            
+        var plainAppUrl = string
+        if plainAppUrl.hasSuffix("/") {
+            plainAppUrl = String(plainAppUrl.dropLast())
+        }
+        
+        guard let deeplinkUri = result?.deeplinkUri else {
+            print("ERRRPORT: No deeplinkUri")
+            return nil
+        }
+            
+        return "\(plainAppUrl)/wc?uri=\(deeplinkUri)"
+    }
 
+
+    func tryTopicConnect() async {
+        do {
+//            let uri: WalletConnectURI = try await AppKit.instance.createPairing()
+//            print(uri)
+////            try await AppKit.instance.connect(
+////                walletUniversalLink: uri.topic // Can be existing topic or nil to create new one
+////            )
+//            let result = try await AppKit.instance.connect(
+//                walletUniversalLink: "metamask://" // Can be existing topic or nil to create new one
+//            )
+//            if let walletURL = URL(string: ("family://\(result?.deeplinkUri ?? "")")) {
+//                await UIApplication.shared.open(walletURL)
+//            }
+            result = try await AppKit.instance.connect(walletUniversalLink: nil)
+//            let urlString = "metamask://wc?uri=wc%3A4dfdbae75d5e22f972370ef3c4fe0a01411735e6b9d864fc49aaedc2d16c2d12%402%3FsymKey%3Dfce04646f65f7bf3e549d913461c86abe9e7ff13d409a9b6db89f10f7e2eff2b%26relay-protocol%3Dirn%26expiryTimestamp%3D1746511559"
+            guard let urlString = try formatNativeUrlString("metamask://") else {return}
+//            guard let urlString = try formatNativeUrlString("familywallet://") else {return}
+            guard let url =  URL(string: urlString) else {return}
+            await UIApplication.shared.open(url) { success in
+                print(success)
+            }
+        }
+        catch {
+            
+        }
+    }
     func connectWalletWithW3M() {
         Task {
             AppKit.set(sessionParams: .init(
@@ -179,3 +251,10 @@ final class SocketViewModel: ObservableObject {
               )]
         }
     }
+
+
+private extension String {
+    func toURL() -> URL? {
+        URL(string: self)
+    }
+}

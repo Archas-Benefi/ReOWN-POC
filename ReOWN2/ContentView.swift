@@ -37,6 +37,8 @@ struct ContentView: View {
                     viewModel.connectWalletWithW3M()
                 }
                 
+                ConnectButton()
+                
                 VStack {
                     ForEach(viewModel.accountsDetails, id: \.account) { account in
                         Button {
@@ -51,6 +53,12 @@ struct ContentView: View {
                     }
                 }
                 .padding(12)
+                
+                Button("TEST") {
+                    Task {
+                        try await viewModel.tryTopicConnect()
+                    }
+                }
                 
                 Button("Check Session") {
                     //                Task {
